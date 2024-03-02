@@ -1,0 +1,38 @@
+service: keywords-service
+
+plugins:
+  - serverless-webpack
+  - serverless-offline
+
+custom:
+  webpackIncludeModules: true
+  webpack:
+    webpackConfig: ./webpack.config.js
+    packager: 'npm'
+    excludeFiles: src/**/*.test.ts
+  stage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, self:provider.region}
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  timeout: 300 # default is 6s, increased to prevent timing out in large functions
+  environment:
+    NODE_OPTIONS: '--openssl-legacy-provider'
+    LOGGING: 'true'
+    LAMBDA_ERROR_LOGS_REGION: ${ssm:/${self:custom.stage}/LAMBDA_ERROR_LOGS_REGION}
+    LAMBDA_ERROR_LOGS_LOG_ERROR_FUNCTION_NAME: ${ssm:/${self:custom.stage}/LAMBDA_ERROR_LOGS_LOG_ERROR_FUNCTION_NAME}
+    STAGE: ${self:custom.stage}
+  iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - lambda:InvokeFunction
+      - lambda:InvokeAsync
+    Resource: "*"
+
+functions: 
+  updateKeywordsBid:
+    handler: src/functions/trigger/keywordBids.main
+
